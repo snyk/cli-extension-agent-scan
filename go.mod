@@ -4,7 +4,7 @@ go 1.24.4
 
 require (
 	github.com/elazarl/goproxy v1.7.2
-	github.com/elazarl/goproxy/ext v0.0.0-20260212222702-ffdf0b284e35
+	github.com/elazarl/goproxy/ext v0.0.0-20230808193330-2592e75ae04a
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/oapi-codegen/runtime v1.1.2
