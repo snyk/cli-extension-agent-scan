@@ -1,9 +1,9 @@
-package mcpscan_test
+package agentscan_test
 
 import (
 	"testing"
 
-	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan"
+	agentscan "github.com/snyk/cli-extension-agent-scan/pkg/agentscan"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/stretchr/testify/assert"
 )
@@ -217,12 +217,12 @@ func TestTenantIDValidation(t *testing.T) {
 func TestFlagConfiguration(t *testing.T) {
 	t.Run("all required flags are defined", func(t *testing.T) {
 		// Verify flag constants exist
-		assert.Equal(t, "experimental", mcpscan.FlagExperimental)
-		assert.Equal(t, "client-id", mcpscan.FlagClientID)
-		assert.Equal(t, "tenant-id", mcpscan.FlagTenantID)
-		assert.Equal(t, "json", mcpscan.FlagJSON)
-		assert.Equal(t, "skills", mcpscan.FlagSkills)
-		assert.Equal(t, "no-upload", mcpscan.FlagNoUpload)
+		assert.Equal(t, "experimental", agentscan.FlagExperimental)
+		assert.Equal(t, "client-id", agentscan.FlagClientID)
+		assert.Equal(t, "tenant-id", agentscan.FlagTenantID)
+		assert.Equal(t, "json", agentscan.FlagJSON)
+		assert.Equal(t, "skills", agentscan.FlagSkills)
+		assert.Equal(t, "no-upload", agentscan.FlagNoUpload)
 	})
 }
 
