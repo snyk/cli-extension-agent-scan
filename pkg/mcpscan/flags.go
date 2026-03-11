@@ -3,7 +3,7 @@ package mcpscan
 import "github.com/spf13/pflag"
 
 const (
-	flagSetName      = "mcp-scan"
+	flagSetName      = "agent-scan"
 	FlagExperimental = "experimental"
 	FlagClientID     = "client-id"
 	FlagTenantID     = "tenant-id"

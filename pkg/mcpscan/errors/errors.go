@@ -28,7 +28,7 @@ func NewUnauthorizedError(msg string) *McpScanError {
 // }
 
 func NewCommandIsExperimentalError() *McpScanError {
-	return &McpScanError{SnykError: cli_errors.NewCommandIsExperimentalError("Snyk mcp-scan is experimental and likely to change.")}
+	return &McpScanError{SnykError: cli_errors.NewCommandIsExperimentalError("Snyk agent-scan is experimental and likely to change.")}
 }
 
 func NewInvalidTenantIDError() *McpScanError {
