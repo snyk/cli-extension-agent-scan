@@ -195,6 +195,8 @@ func (p *WrapperProxy) checkBasicCredentials(user, password string) bool {
 }
 
 func (p *WrapperProxy) HandleConnect(req string, ctx *goproxy.ProxyCtx) (*goproxy.ConnectAction, string) {
+	p.DebugLogger.Print("HandleConnect - host: ", req)
+
 	basic := auth.BasicConnect("", p.checkBasicCredentials)
 	action, str := basic.HandleConnect(req, ctx)
 	p.DebugLogger.Print("HandleConnect - basic authentication result: ", action, str)
@@ -205,8 +207,8 @@ func (p *WrapperProxy) HandleConnect(req string, ctx *goproxy.ProxyCtx) (*goprox
 		action = p.okConnect
 	}
 
-	if action == p.okConnect {
-		// Use instance-specific MITM connect action
+	// Always use MITM for successful connections to inject authentication
+	if action != nil && (action.Action == goproxy.ConnectAccept || action.Action == p.okConnect.Action) {
 		action = p.mitmConnect
 		str = req
 	}
@@ -220,13 +222,15 @@ func (p *WrapperProxy) Start() error {
 	// zerolog based logger also works but it will print empty lines between logs
 	proxy.Logger = log.New(&pkg_utils.ToZeroLogDebug{Logger: p.DebugLogger}, "", 0)
 
+	// Register CONNECT handler first
+	proxy.OnRequest().HandleConnect(p)
+
 	for _, i := range p.interceptors {
 		proxy.OnRequest(i.GetCondition()).DoFunc(i.GetHandler())
 	}
 
-	proxy.OnRequest().HandleConnect(p)
 	proxy.OnResponse().DoFunc(p.handleResponse)
-	proxy.Verbose = true
+	proxy.Verbose = false
 	proxyServer := &http.Server{
 		Handler: proxy,
 	}

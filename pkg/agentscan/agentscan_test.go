@@ -49,6 +49,11 @@ func TestFilterArgs_NoUploadFlag(t *testing.T) {
 			rawArgs:  []string{"agent-scan", "--experimental", "--json", "--skills", "path/to/scan"},
 			expected: []string{"--json", "--skills", "path/to/scan"},
 		},
+		{
+			name:     "filters out --insecure",
+			rawArgs:  []string{"agent-scan", "--experimental", "--insecure", "path/to/scan"},
+			expected: []string{"path/to/scan"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -58,6 +63,9 @@ func TestFilterArgs_NoUploadFlag(t *testing.T) {
 			filtered := make([]string, 0, len(tt.rawArgs))
 			for _, a := range tt.rawArgs {
 				if a == "agent-scan" || a == "--experimental" || a == "--no-upload" {
+					continue
+				}
+				if a == "--insecure" {
 					continue
 				}
 				if len(a) >= len("--tenant-id=") && a[:len("--tenant-id=")] == "--tenant-id=" {

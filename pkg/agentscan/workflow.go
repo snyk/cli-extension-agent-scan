@@ -9,10 +9,10 @@ import (
 const (
 	ScanWorkflowIDStr = "agent-scan"
 
-	AgentScanBinaryVersion = "0.4.5"
+	AgentScanBinaryVersion = "0.4.6"
 
-	AgentScanBinaryChecksumLinuxAmd64 = "970117704e6339288ed62e897a05920b6db23dffeea7d3f04605f273534df8b0"
-	AgentScanBinaryChecksumMacOSArm64 = "e2f2cb9dc38c3affed9ca2c2628ed0aac191b8d7d9bab75c200c14839a50c555"
+	AgentScanBinaryChecksumLinuxAmd64 = "e0750a35d6e1dce2574e602046e1085ccbed5072f80ce5e240fc30e6434af139"
+	AgentScanBinaryChecksumMacOSArm64 = "26af48d4467e4d91b31760a83d7e4323bd0cbd4bb984780338005c56f512f5ba"
 )
 
 var (

@@ -280,6 +280,7 @@ func configureProxyEnvironment(cmd *exec.Cmd, proxyInfo interface{}, logger *zer
 	envMap["NODE_EXTRA_CA_CERTS"] = pi.CertificateLocation
 	envMap["SSL_CERT_FILE"] = pi.CertificateLocation
 	envMap["REQUESTS_CA_BUNDLE"] = pi.CertificateLocation
+	envMap["SNYK_CLI_USE"] = "true"
 
 	// Convert back to slice
 	cmd.Env = make([]string, 0, len(envMap))
