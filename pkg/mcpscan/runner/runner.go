@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog"
-	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/proxy"
+	"github.com/snyk/cli-extension-agent-scan/pkg/agentscan/proxy"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 )
