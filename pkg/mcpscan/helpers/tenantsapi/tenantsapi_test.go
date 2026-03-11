@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan/helpers/tenantsapi"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/helpers/tenantsapi"
 )
 
 const (

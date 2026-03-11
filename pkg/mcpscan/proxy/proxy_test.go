@@ -21,9 +21,9 @@ import (
 	"github.com/snyk/go-httpauth/pkg/httpauth"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan/constants"
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan/proxy"
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan/utils"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/constants"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/proxy"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/utils"
 )
 
 // Constants.

@@ -3,7 +3,7 @@ package utils_test
 import (
 	"testing"
 
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan/utils"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/utils"
 )
 
 func TestIsValidUUID_Valid(t *testing.T) {

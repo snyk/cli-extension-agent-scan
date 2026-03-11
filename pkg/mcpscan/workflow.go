@@ -7,12 +7,12 @@ import (
 )
 
 const (
-	ScanWorkflowIDStr = "mcp-scan"
+	ScanWorkflowIDStr = "agent-scan"
 
-	MCPScanBinaryVersion = "0.4.2"
+	MCPScanBinaryVersion = "0.4.5"
 
-	MCPScanBinaryChecksumLinuxAmd64 = "06d372791ae93b5384da5c81b87e9c816ac7756c1d56810dd05329bfc10b5613"
-	MCPScanBinaryChecksumMacOSArm64 = "acb0ddc751d8dd8aba7243e366758e1d6d0b12b674f5ea900357dc79ac6de0fe"
+	MCPScanBinaryChecksumLinuxAmd64 = "970117704e6339288ed62e897a05920b6db23dffeea7d3f04605f273534df8b0"
+	MCPScanBinaryChecksumMacOSArm64 = "e2f2cb9dc38c3affed9ca2c2628ed0aac191b8d7d9bab75c200c14839a50c555"
 )
 
 var (

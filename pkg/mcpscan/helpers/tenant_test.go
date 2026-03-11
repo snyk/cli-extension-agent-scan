@@ -3,7 +3,7 @@ package helpers_test
 import (
 	"testing"
 
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan/helpers"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/helpers"
 )
 
 // Test that GetTenantID respects an already provided tenantID without needing ctx.
