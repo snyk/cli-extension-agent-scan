@@ -1,4 +1,4 @@
-module github.com/snyk/cli-extension-mcp-scan
+module github.com/snyk/cli-extension-agent-scan
 
 go 1.24.4
 

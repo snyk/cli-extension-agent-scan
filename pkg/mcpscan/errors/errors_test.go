@@ -3,7 +3,7 @@ package errors_test
 import (
 	"testing"
 
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan/errors"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/errors"
 )
 
 const (

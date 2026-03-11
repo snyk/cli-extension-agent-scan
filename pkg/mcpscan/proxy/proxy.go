@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -22,9 +23,9 @@ import (
 	"github.com/elazarl/goproxy"
 	"github.com/elazarl/goproxy/ext/auth"
 
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan/constants"
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan/proxy/interceptor"
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan/utils"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/constants"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/proxy/interceptor"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/utils"
 )
 
 type WrapperProxy struct {
@@ -41,6 +42,10 @@ type WrapperProxy struct {
 	proxyPassword       string
 	config              configuration.Configuration
 	interceptors        []interceptor.Interceptor
+	// Instance-specific certificate and connect actions (not global)
+	goproxyCa   tls.Certificate
+	okConnect   *goproxy.ConnectAction
+	mitmConnect *goproxy.ConnectAction
 }
 
 type ProxyInfo struct {
@@ -55,9 +60,10 @@ const (
 )
 
 type CaData struct {
-	CertPool *x509.CertPool
-	CertFile string
-	CertPem  string
+	CertPool  *x509.CertPool
+	CertFile  string
+	CertPem   string
+	GoproxyCa tls.Certificate
 }
 
 func InitCA(config configuration.Configuration, cliVersion string, logger *zerolog.Logger) (*CaData, error) {
@@ -119,16 +125,20 @@ func InitCA(config configuration.Configuration, cliVersion string, logger *zerol
 		return nil, err
 	}
 
-	// Configure goproxy Certificate
-	err = setGlobalProxyCA(certPEMBlock, keyPEMBlock)
+	// Parse certificate for this proxy instance (not global)
+	goproxyCa, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
 	if err != nil {
+		return nil, err
+	}
+	if goproxyCa.Leaf, err = x509.ParseCertificate(goproxyCa.Certificate[0]); err != nil {
 		return nil, err
 	}
 
 	return &CaData{
-		CertPool: rootCAs,
-		CertFile: certificateLocation,
-		CertPem:  certPEMString,
+		CertPool:  rootCAs,
+		CertFile:  certificateLocation,
+		CertPem:   certPEMString,
+		GoproxyCa: goproxyCa,
 	}, nil
 }
 
@@ -138,6 +148,11 @@ func NewWrapperProxy(config configuration.Configuration, cliVersion string, debu
 	p.DebugLogger = debugLogger
 	p.CertificateLocation = ca.CertFile
 	p.config = config
+	p.goproxyCa = ca.GoproxyCa
+
+	// Create instance-specific connect actions
+	p.okConnect = &goproxy.ConnectAction{Action: goproxy.ConnectAccept, TLSConfig: goproxy.TLSConfigFromCA(&p.goproxyCa)}
+	p.mitmConnect = &goproxy.ConnectAction{Action: goproxy.ConnectMitm, TLSConfig: goproxy.TLSConfigFromCA(&p.goproxyCa)}
 
 	insecureSkipVerify := config.GetBool(configuration.INSECURE_HTTPS)
 
@@ -187,11 +202,13 @@ func (p *WrapperProxy) HandleConnect(req string, ctx *goproxy.ProxyCtx) (*goprox
 	// If auth failed but connection is from localhost, allow it anyway
 	// The proxy is only listening on 127.0.0.1, so this is safe
 	if action == nil {
-		action = goproxy.OkConnect
+		action = p.okConnect
 	}
 
-	if action == goproxy.OkConnect {
-		action, str = goproxy.AlwaysMitm.HandleConnect(req, ctx)
+	if action == p.okConnect {
+		// Use instance-specific MITM connect action
+		action = p.mitmConnect
+		str = req
 	}
 
 	return action, str
@@ -247,24 +264,73 @@ func (p *WrapperProxy) Close() {
 	p.Stop()
 }
 
-func setGlobalProxyCA(certPEMBlock, keyPEMBlock []byte) error {
-	goproxyCa, err := tls.X509KeyPair(certPEMBlock, keyPEMBlock)
-	if err != nil {
-		return err
-	}
-	if goproxyCa.Leaf, err = x509.ParseCertificate(goproxyCa.Certificate[0]); err != nil {
-		return err
-	}
-	goproxy.GoproxyCa = goproxyCa
-	goproxy.OkConnect = &goproxy.ConnectAction{Action: goproxy.ConnectAccept, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
-	goproxy.MitmConnect = &goproxy.ConnectAction{Action: goproxy.ConnectMitm, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
-	goproxy.HTTPMitmConnect = &goproxy.ConnectAction{Action: goproxy.ConnectHTTPMitm, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
-	goproxy.RejectConnect = &goproxy.ConnectAction{Action: goproxy.ConnectReject, TLSConfig: goproxy.TLSConfigFromCA(&goproxyCa)}
-	return nil
-}
-
 func (p *WrapperProxy) RegisterInterceptor(interceptor interceptor.Interceptor) {
 	p.interceptors = append(p.interceptors, interceptor)
+}
+
+// shouldUseProxy checks if the request should use the upstream proxy based on NO_PROXY settings
+func shouldUseProxy(req *http.Request) bool {
+	if req == nil || req.URL == nil {
+		return true
+	}
+
+	host := req.URL.Hostname()
+	if host == "" {
+		return true
+	}
+
+	// Check NO_PROXY environment variable (both uppercase and lowercase)
+	noProxy := os.Getenv("NO_PROXY")
+	if noProxy == "" {
+		noProxy = os.Getenv("no_proxy")
+	}
+
+	if noProxy == "" {
+		return true
+	}
+
+	// Parse NO_PROXY patterns
+	patterns := strings.Split(noProxy, ",")
+	for _, pattern := range patterns {
+		pattern = strings.TrimSpace(pattern)
+		if pattern == "" {
+			continue
+		}
+
+		// Handle wildcard patterns
+		if pattern == "*" {
+			return false
+		}
+
+		// Handle domain suffix matching (e.g., .example.com matches sub.example.com)
+		if strings.HasPrefix(pattern, ".") {
+			if strings.HasSuffix(host, pattern) || host == pattern[1:] {
+				return false
+			}
+			continue
+		}
+
+		// Exact match or suffix match
+		if host == pattern || strings.HasSuffix(host, "."+pattern) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// proxyFuncWithNoProxySupport wraps an upstream proxy function with NO_PROXY support
+func (p *WrapperProxy) proxyFuncWithNoProxySupport(upstreamProxy func(*http.Request) (*url.URL, error)) func(*http.Request) (*url.URL, error) {
+	return func(req *http.Request) (*url.URL, error) {
+		// Check if this request should bypass the proxy based on NO_PROXY
+		if !shouldUseProxy(req) {
+			p.DebugLogger.Debug().Str("host", req.URL.Hostname()).Msg("Bypassing upstream proxy due to NO_PROXY")
+			return nil, nil
+		}
+
+		// Use the upstream proxy
+		return upstreamProxy(req)
+	}
 }
 
 func (p *WrapperProxy) SetUpstreamProxyAuthentication(mechanism httpauth.AuthenticationMechanism) {
@@ -279,7 +345,8 @@ func (p *WrapperProxy) SetUpstreamProxyAuthentication(mechanism httpauth.Authent
 		p.transport.Proxy = nil
 	} else { // for other mechanisms like basic we switch back to go default behavior
 		p.transport.DialContext = nil
-		p.transport.Proxy = p.upstreamProxy
+		// Wrap the upstream proxy with NO_PROXY support
+		p.transport.Proxy = p.proxyFuncWithNoProxySupport(p.upstreamProxy)
 		p.authenticator = nil
 	}
 }

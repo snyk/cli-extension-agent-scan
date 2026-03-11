@@ -3,7 +3,7 @@ package mcpscan_test
 import (
 	"testing"
 
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/stretchr/testify/assert"
 )

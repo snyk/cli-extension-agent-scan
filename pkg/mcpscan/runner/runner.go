@@ -15,7 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan/proxy"
+	"github.com/rs/zerolog"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/proxy"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 )
@@ -234,6 +235,65 @@ func getOrDownloadBinary(ctx workflow.InvocationContext, version, checksum strin
 	return cachePath, nil
 }
 
+// configureProxyEnvironment configures proxy-related environment variables for the command.
+func configureProxyEnvironment(cmd *exec.Cmd, proxyInfo interface{}, logger *zerolog.Logger) {
+	if proxyInfo == nil {
+		return
+	}
+
+	pi, ok := proxyInfo.(*proxy.ProxyInfo)
+	if !ok {
+		return
+	}
+
+	// Build environment map from parent
+	envMap := make(map[string]string)
+	for _, env := range os.Environ() {
+		parts := strings.SplitN(env, "=", 2)
+		if len(parts) == 2 {
+			envMap[parts[0]] = parts[1]
+		}
+	}
+
+	// Preserve and merge NO_PROXY
+	existingNoProxy := envMap["NO_PROXY"]
+	if existingNoProxy == "" {
+		existingNoProxy = envMap["no_proxy"]
+	}
+
+	internalNoProxy := "localhost,127.0.0.1,::1"
+	mergedNoProxy := internalNoProxy
+	if existingNoProxy != "" {
+		mergedNoProxy = internalNoProxy + "," + existingNoProxy
+	}
+
+	// Update map (no duplicates)
+	proxyURL := fmt.Sprintf("http://snykcli:%s@127.0.0.1:%d", pi.Password, pi.Port)
+	envMap["HTTP_PROXY"] = proxyURL
+	envMap["HTTPS_PROXY"] = proxyURL
+	envMap["http_proxy"] = proxyURL
+	envMap["https_proxy"] = proxyURL
+	envMap["ALL_PROXY"] = proxyURL
+	envMap["all_proxy"] = proxyURL
+	envMap["NO_PROXY"] = mergedNoProxy
+	envMap["no_proxy"] = mergedNoProxy
+	envMap["NODE_EXTRA_CA_CERTS"] = pi.CertificateLocation
+	envMap["SSL_CERT_FILE"] = pi.CertificateLocation
+	envMap["REQUESTS_CA_BUNDLE"] = pi.CertificateLocation
+
+	// Convert back to slice
+	cmd.Env = make([]string, 0, len(envMap))
+	for k, v := range envMap {
+		cmd.Env = append(cmd.Env, k+"="+v)
+	}
+
+	logger.Debug().
+		Str("proxyURL", fmt.Sprintf("http://snykcli:***@127.0.0.1:%d", pi.Port)).
+		Str("certLocation", pi.CertificateLocation).
+		Str("noProxy", mergedNoProxy).
+		Msg("Configured binary to use proxy")
+}
+
 // ExecuteBinary writes the binary to a temp file and runs it.
 // Returns the exit code and error. If the binary exits with a non-zero code,
 // the error will be non-nil and contain the exit code information.
@@ -290,28 +350,7 @@ func ExecuteBinary(ctx workflow.InvocationContext, args []string, version, check
 	cmd.Env = append(os.Environ(), "SNYK_CLI_USE=true")
 
 	// Configure proxy if provided
-	if proxyInfo != nil {
-		// Type assert to get the proxy info structure
-		if pi, ok := proxyInfo.(*proxy.ProxyInfo); ok {
-			// Set proxy environment variables (both uppercase and lowercase for compatibility)
-			proxyURL := fmt.Sprintf("http://snykcli:%s@127.0.0.1:%d", pi.Password, pi.Port)
-			cmd.Env = append(cmd.Env,
-				fmt.Sprintf("HTTP_PROXY=%s", proxyURL),
-				fmt.Sprintf("HTTPS_PROXY=%s", proxyURL),
-				fmt.Sprintf("http_proxy=%s", proxyURL),
-				fmt.Sprintf("https_proxy=%s", proxyURL),
-				fmt.Sprintf("ALL_PROXY=%s", proxyURL),
-				fmt.Sprintf("all_proxy=%s", proxyURL),
-				fmt.Sprintf("NODE_EXTRA_CA_CERTS=%s", pi.CertificateLocation),
-				fmt.Sprintf("SSL_CERT_FILE=%s", pi.CertificateLocation),
-				fmt.Sprintf("REQUESTS_CA_BUNDLE=%s", pi.CertificateLocation),
-			)
-			logger.Debug().
-				Str("proxyURL", fmt.Sprintf("http://snykcli:***@127.0.0.1:%d", pi.Port)).
-				Str("certLocation", pi.CertificateLocation).
-				Msg("Configured binary to use proxy")
-		}
-	}
+	configureProxyEnvironment(cmd, proxyInfo, logger)
 
 	// Connect standard input/output if you want to see the binary's output
 	cmd.Stdout = os.Stdout

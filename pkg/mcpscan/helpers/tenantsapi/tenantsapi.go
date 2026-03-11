@@ -8,7 +8,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan/helpers/tenantsapi/internal/generated"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/helpers/tenantsapi/internal/generated"
 )
 
 type Version = generated.Version

@@ -12,7 +12,7 @@ import (
 
 	"github.com/elazarl/goproxy"
 	"github.com/rs/zerolog"
-	"github.com/snyk/cli-extension-mcp-scan/pkg/mcpscan/utils"
+	"github.com/snyk/cli-extension-agent-scan/pkg/mcpscan/utils"
 	"github.com/snyk/go-application-framework/pkg/analytics"
 	"github.com/snyk/go-application-framework/pkg/workflow"
 )
