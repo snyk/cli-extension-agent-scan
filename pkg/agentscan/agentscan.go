@@ -93,9 +93,16 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 		return nil, err
 	}
 
+	// Check if SSL verification should be skipped
+	skipSSLVerify := config.GetBool(configuration.INSECURE_HTTPS)
+
 	filteredArgs := make([]string, 0, len(rawArgs))
 	for _, a := range rawArgs {
 		if a == "agent-scan" || a == "--experimental" || a == "--no-upload" {
+			continue
+		}
+		if a == "--insecure" {
+			skipSSLVerify = true
 			continue
 		}
 		if a == "help" {
@@ -187,12 +194,12 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 	filteredArgs = append([]string{"scan"}, filteredArgs...)
 
 	// Always set analysis URL
-	analysisServerURL := fmt.Sprintf("%s/hidden/agent-scan/analysis-machine?version=2025-09-02", ctx.GetConfiguration().GetString(configuration.API_URL))
+	analysisServerURL := fmt.Sprintf("%s/hidden/mcp-scan/analysis-machine?version=2025-09-02", ctx.GetConfiguration().GetString(configuration.API_URL))
 	filteredArgs = append(filteredArgs, "--analysis-url", analysisServerURL)
 
 	// Only add control server arguments when not using --no-upload
 	if !noUpload {
-		controlServerURL := fmt.Sprintf("%s/hidden/agent-scan/push?version=2025-08-28", ctx.GetConfiguration().GetString(configuration.API_URL))
+		controlServerURL := fmt.Sprintf("%s/hidden/mcp-scan/push?version=2025-08-28", ctx.GetConfiguration().GetString(configuration.API_URL))
 		filteredArgs = append(filteredArgs,
 			"--control-server", controlServerURL,
 			"--control-server-H", "x-client-id: "+clientID,
@@ -204,6 +211,11 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 		}
 		controlIdentifier := strings.TrimSpace(string(unameOut))
 		filteredArgs = append(filteredArgs, "--control-identifier", controlIdentifier)
+	}
+
+	// Add --skip-ssl-verify if insecure mode is enabled
+	if skipSSLVerify {
+		filteredArgs = append(filteredArgs, "--skip-ssl-verify")
 	}
 
 	// Initialize proxy for credential injection
