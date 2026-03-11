@@ -16,37 +16,37 @@ func TestFilterArgs_NoUploadFlag(t *testing.T) {
 	}{
 		{
 			name:     "filters out --no-upload",
-			rawArgs:  []string{"mcp-scan", "--experimental", "--no-upload", "path/to/scan"},
+			rawArgs:  []string{"agent-scan", "--experimental", "--no-upload", "path/to/scan"},
 			expected: []string{"path/to/scan"},
 		},
 		{
 			name:     "filters out --experimental",
-			rawArgs:  []string{"mcp-scan", "--experimental", "path/to/scan"},
+			rawArgs:  []string{"agent-scan", "--experimental", "path/to/scan"},
 			expected: []string{"path/to/scan"},
 		},
 		{
-			name:     "filters out mcp-scan command",
-			rawArgs:  []string{"mcp-scan", "path/to/scan"},
+			name:     "filters out agent-scan command",
+			rawArgs:  []string{"agent-scan", "path/to/scan"},
 			expected: []string{"path/to/scan"},
 		},
 		{
 			name:     "filters out --client-id",
-			rawArgs:  []string{"mcp-scan", "--client-id=123e4567-e89b-12d3-a456-426614174000", "path/to/scan"},
+			rawArgs:  []string{"agent-scan", "--client-id=123e4567-e89b-12d3-a456-426614174000", "path/to/scan"},
 			expected: []string{"path/to/scan"},
 		},
 		{
 			name:     "filters out --tenant-id",
-			rawArgs:  []string{"mcp-scan", "--tenant-id=123e4567-e89b-12d3-a456-426614174000", "path/to/scan"},
+			rawArgs:  []string{"agent-scan", "--tenant-id=123e4567-e89b-12d3-a456-426614174000", "path/to/scan"},
 			expected: []string{"path/to/scan"},
 		},
 		{
 			name:     "filters multiple flags",
-			rawArgs:  []string{"mcp-scan", "--experimental", "--no-upload", "--client-id=123e4567-e89b-12d3-a456-426614174000", "--tenant-id=123e4567-e89b-12d3-a456-426614174000", "path/to/scan", "--json"},
+			rawArgs:  []string{"agent-scan", "--experimental", "--no-upload", "--client-id=123e4567-e89b-12d3-a456-426614174000", "--tenant-id=123e4567-e89b-12d3-a456-426614174000", "path/to/scan", "--json"},
 			expected: []string{"path/to/scan", "--json"},
 		},
 		{
 			name:     "keeps other flags",
-			rawArgs:  []string{"mcp-scan", "--experimental", "--json", "--skills", "path/to/scan"},
+			rawArgs:  []string{"agent-scan", "--experimental", "--json", "--skills", "path/to/scan"},
 			expected: []string{"--json", "--skills", "path/to/scan"},
 		},
 	}
@@ -57,7 +57,7 @@ func TestFilterArgs_NoUploadFlag(t *testing.T) {
 			// The actual filtering happens in the Workflow function
 			filtered := make([]string, 0, len(tt.rawArgs))
 			for _, a := range tt.rawArgs {
-				if a == "mcp-scan" || a == "--experimental" || a == "--no-upload" {
+				if a == "agent-scan" || a == "--experimental" || a == "--no-upload" {
 					continue
 				}
 				if len(a) >= len("--tenant-id=") && a[:len("--tenant-id=")] == "--tenant-id=" {

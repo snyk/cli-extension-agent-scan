@@ -13,7 +13,7 @@ const testHelloWorld = "hello world"
 func writeTempFile(t *testing.T, contents string) string {
 	t.Helper()
 
-	f, err := os.CreateTemp(t.TempDir(), "mcp-scan-checksum-test-*")
+	f, err := os.CreateTemp(t.TempDir(), "agent-scan-checksum-test-*")
 	if err != nil {
 		t.Fatalf("failed to create temp file: %v", err)
 	}

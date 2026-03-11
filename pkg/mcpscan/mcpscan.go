@@ -66,7 +66,7 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 
 	checksum, checksumErr := checksumForCurrentPlatform()
 	if checksumErr != nil {
-		logger.Debug().Err(checksumErr).Msg("Unsupported platform or checksum not configured for mcp-scan binary")
+		logger.Debug().Err(checksumErr).Msg("Unsupported platform or checksum not configured for agent-scan binary")
 		return nil, checksumErr
 	}
 
@@ -95,7 +95,7 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 
 	filteredArgs := make([]string, 0, len(rawArgs))
 	for _, a := range rawArgs {
-		if a == "mcp-scan" || a == "--experimental" || a == "--no-upload" {
+		if a == "agent-scan" || a == "--experimental" || a == "--no-upload" {
 			continue
 		}
 		if a == "help" {
@@ -114,8 +114,8 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 	if isHelp {
 		exitCode, err := runner.ExecuteBinary(ctx, []string{"help"}, MCPScanBinaryVersion, checksum, nil)
 		if err != nil {
-			logger.Debug().Err(err).Int("exitCode", exitCode).Msg("Error running mcp-scan help binary")
-			return nil, fmt.Errorf("failed to run mcp-scan help binary: %w", err)
+			logger.Debug().Err(err).Int("exitCode", exitCode).Msg("Error running agent-scan help binary")
+			return nil, fmt.Errorf("failed to run agent-scan help binary: %w", err)
 		}
 		return nil, nil
 	}
@@ -187,12 +187,12 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 	filteredArgs = append([]string{"scan"}, filteredArgs...)
 
 	// Always set analysis URL
-	analysisServerURL := fmt.Sprintf("%s/hidden/mcp-scan/analysis-machine?version=2025-09-02", ctx.GetConfiguration().GetString(configuration.API_URL))
+	analysisServerURL := fmt.Sprintf("%s/hidden/agent-scan/analysis-machine?version=2025-09-02", ctx.GetConfiguration().GetString(configuration.API_URL))
 	filteredArgs = append(filteredArgs, "--analysis-url", analysisServerURL)
 
 	// Only add control server arguments when not using --no-upload
 	if !noUpload {
-		controlServerURL := fmt.Sprintf("%s/hidden/mcp-scan/push?version=2025-08-28", ctx.GetConfiguration().GetString(configuration.API_URL))
+		controlServerURL := fmt.Sprintf("%s/hidden/agent-scan/push?version=2025-08-28", ctx.GetConfiguration().GetString(configuration.API_URL))
 		filteredArgs = append(filteredArgs,
 			"--control-server", controlServerURL,
 			"--control-server-H", "x-client-id: "+clientID,
@@ -237,8 +237,8 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 	// Run the embedded binary
 	exitCode, err := runner.ExecuteBinary(ctx, filteredArgs, MCPScanBinaryVersion, checksum, proxyInfo)
 	if err != nil {
-		logger.Debug().Err(err).Int("exitCode", exitCode).Msg("Error running mcp-scan binary")
-		return nil, fmt.Errorf("failed to run mcp-scan binary: %w", err)
+		logger.Debug().Err(err).Int("exitCode", exitCode).Msg("Error running agent-scan binary")
+		return nil, fmt.Errorf("failed to run agent-scan binary: %w", err)
 	}
 
 	return []workflow.Data{}, nil

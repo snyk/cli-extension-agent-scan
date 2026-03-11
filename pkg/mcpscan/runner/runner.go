@@ -46,14 +46,14 @@ func platformAssetMatcher() (prefix, suffix string, err error) {
 	case "linux":
 		switch runtime.GOARCH {
 		case "amd64":
-			return "mcp-scan-", "-linux-x86_64", nil
+			return "agent-scan-", "-linux-x86_64", nil
 		default:
 			return "", "", fmt.Errorf("unsupported linux architecture: %s", runtime.GOARCH)
 		}
 	case "darwin":
 		switch runtime.GOARCH {
 		case "arm64":
-			return "mcp-scan-", "-macos-arm64", nil
+			return "agent-scan-", "-macos-arm64", nil
 		default:
 			return "", "", fmt.Errorf("unsupported darwin architecture: %s", runtime.GOARCH)
 		}
@@ -98,7 +98,7 @@ func verifyFileChecksum(path, expected string) (bool, error) {
 	return strings.EqualFold(actual, expected), nil
 }
 
-// getOrDownloadBinary locates, downloads, verifies and caches the mcp-scan binary for this platform.
+// getOrDownloadBinary locates, downloads, verifies and caches the agent-scan binary for this platform.
 //
 //nolint:gocyclo // The control flow is a bit involved but kept together for clarity.
 func getOrDownloadBinary(ctx workflow.InvocationContext, version, checksum string) (string, error) {
@@ -124,35 +124,35 @@ func getOrDownloadBinary(ctx workflow.InvocationContext, version, checksum strin
 		if perr := progressBar.UpdateProgress(0.1); perr != nil {
 			logger.Debug().Err(perr).Msg("failed to update progress bar while verifying cached binary")
 		}
-		progressBar.SetTitle("Verifying cached mcp-scan binary")
+		progressBar.SetTitle("Verifying cached agent-scan binary")
 
 		ok, verr := verifyFileChecksum(cachePath, checksum)
 		if verr != nil {
-			logger.Error().Err(verr).Msg("Failed to verify checksum of cached mcp-scan binary")
+			logger.Error().Err(verr).Msg("Failed to verify checksum of cached agent-scan binary")
 			if cerr := progressBar.Clear(); cerr != nil {
 				logger.Debug().Err(cerr).Msg("failed to clear progress bar after cached checksum verification error")
 			}
-			return "", fmt.Errorf("failed to verify checksum of cached mcp-scan binary: %w", verr)
+			return "", fmt.Errorf("failed to verify checksum of cached agent-scan binary: %w", verr)
 		}
 		if !ok {
-			logger.Error().Msg("Checksum verification failed for cached mcp-scan binary")
+			logger.Error().Msg("Checksum verification failed for cached agent-scan binary")
 			if cerr := progressBar.Clear(); cerr != nil {
 				logger.Debug().Err(cerr).Msg("failed to clear progress bar after cached checksum mismatch")
 			}
-			return "", fmt.Errorf("checksum verification failed for cached mcp-scan binary")
+			return "", fmt.Errorf("checksum verification failed for cached agent-scan binary")
 		}
 
 		if perr := progressBar.UpdateProgress(1.0); perr != nil {
 			logger.Debug().Err(perr).Msg("failed to update progress bar after verifying cached binary")
 		}
-		progressBar.SetTitle("Using cached mcp-scan binary")
+		progressBar.SetTitle("Using cached agent-scan binary")
 
 		time.AfterFunc(800*time.Millisecond, func() {
 			if cerr := progressBar.Clear(); cerr != nil {
 				logger.Debug().Err(cerr).Msg("failed to clear progress bar after using cached binary")
 			}
 		})
-		logger.Debug().Str("path", cachePath).Msg("Using cached mcp-scan binary")
+		logger.Debug().Str("path", cachePath).Msg("Using cached agent-scan binary")
 		return cachePath, nil
 	}
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -162,10 +162,10 @@ func getOrDownloadBinary(ctx workflow.InvocationContext, version, checksum strin
 	if perr := progressBar.UpdateProgress(0.2); perr != nil {
 		logger.Debug().Err(perr).Msg("failed to update progress bar before download")
 	}
-	progressBar.SetTitle("Downloading mcp-scan binary")
+	progressBar.SetTitle("Downloading agent-scan binary")
 	json := config.GetBool("json")
 	if !json {
-		if outErr := ctx.GetUserInterface().Output(fmt.Sprintf("Disclaimer: Downloading mcp-scan binary from %s", asset.BrowserDownloadURL)); outErr != nil {
+		if outErr := ctx.GetUserInterface().Output(fmt.Sprintf("Disclaimer: Downloading agent-scan binary from %s", asset.BrowserDownloadURL)); outErr != nil {
 			logger.Debug().Err(outErr).Msg("failed to output download disclaimer")
 		}
 	}
@@ -194,7 +194,7 @@ func getOrDownloadBinary(ctx workflow.InvocationContext, version, checksum strin
 		_ = os.Remove(tmpDownload.Name())
 		return "", fmt.Errorf("failed to close downloaded binary: %w", closeErr)
 	}
-	progressBar.SetTitle("Verifying downloaded mcp-scan binary")
+	progressBar.SetTitle("Verifying downloaded agent-scan binary")
 	if perr := progressBar.UpdateProgress(0.9); perr != nil {
 		logger.Debug().Err(perr).Msg("failed to update progress bar before checksum verification")
 	}
@@ -301,14 +301,14 @@ func ExecuteBinary(ctx workflow.InvocationContext, args []string, version, check
 	logger := ctx.GetEnhancedLogger()
 	binaryPath, err := getOrDownloadBinary(ctx, version, checksum)
 	if err != nil {
-		logger.Error().Err(err).Msg("Failed to prepare mcp-scan binary")
+		logger.Error().Err(err).Msg("Failed to prepare agent-scan binary")
 		return -1, err
 	}
-	logger.Debug().Str("binaryPath", binaryPath).Msg("Executing mcp-scan binary")
+	logger.Debug().Str("binaryPath", binaryPath).Msg("Executing agent-scan binary")
 
 	// 1. Create a temporary file
 	// The "*" is a placeholder for a random string to ensure uniqueness
-	tmpFile, err := os.CreateTemp("", "mcp-scan-*")
+	tmpFile, err := os.CreateTemp("", "agent-scan-*")
 	if err != nil {
 		return -1, fmt.Errorf("failed to create temp file: %w", err)
 	}

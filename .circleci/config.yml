@@ -53,7 +53,7 @@ workflows:
           name: Scan repository for secrets
           context:
             - snyk-bot-slack
-          channel: proj-mcp-scan
+          channel: proj-agent-scan
       - security-scans:
           name: Security Scans
           context:
