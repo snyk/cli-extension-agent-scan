@@ -127,78 +127,80 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 		return nil, nil
 	}
 
-	// When --no-upload is set, we must be logged in but don't need client-id
-	if noUpload {
+	// Only prepend 'scan' command if no command is already specified
+	// A command is the first non-flag argument (doesn't start with -)
+	hasCommand := false
+	if len(filteredArgs) > 0 && !strings.HasPrefix(filteredArgs[0], "-") {
+		// Check if it's a known command (not a path)
+		// Common commands: scan, help, version, etc.
+		// If it doesn't look like a path (no / or .), assume it's a command
+		firstArg := filteredArgs[0]
+		if !strings.Contains(firstArg, "/") && !strings.Contains(firstArg, ".") {
+			hasCommand = true
+		}
+	}
+
+	// Verify authentication if needed (for --no-upload or when client-id is not provided)
+	needsAuth := noUpload || clientID == ""
+	if needsAuth {
 		_, err := engine.InvokeWithConfig(localworkflows.WORKFLOWID_WHOAMI, config)
 		if err != nil {
-			unauthErr := errors.NewUnauthorizedError("--no-upload requires authentication. Run `snyk auth` to authenticate.").SnykError
-			if outErr := ui.OutputError(unauthErr); outErr != nil {
-				logger.Error().Err(outErr).Msg("Failed to output unauthorized error")
+			var unauthErr error
+			if noUpload {
+				unauthErr = errors.NewUnauthorizedError("--no-upload requires authentication. Run `snyk auth` to authenticate.").SnykError
+			} else {
+				unauthErr = errors.NewUnauthorizedError("Run `snyk auth` or provide valid client id (--client-id=<UUID>)").SnykError
 			}
-			logger.Error().Err(unauthErr).Msg("--no-upload requires authentication")
-			return nil, unauthErr
-		}
-	} else if clientID == "" {
-		// 2 modes of operation
-		// 1. We're logged in, we retrieve the client id via API and push against the authenticated push endpoint
-		// 2. We're not logged in, we expect the client id via parameters and push against the unauthenticated push endpoint
-		// 3. Error otherwise
-		isLoggedIn := false
-
-		_, err := engine.InvokeWithConfig(localworkflows.WORKFLOWID_WHOAMI, config)
-
-		if err == nil {
-			isLoggedIn = true
-		}
-
-		if isLoggedIn {
-			if tenantID == "" {
-				if json {
-					return nil, fmt.Errorf("tenant ID is required when using --json flag. Please provide it using --tenant-id")
-				}
-				tenantID, err = helpers.GetTenantID(ctx, tenantID)
-				if err != nil {
-					return nil, fmt.Errorf("failed to get tenant ID: %w", err)
-				}
-			}
-			clientID, err = helpers.GetClientID(ctx, tenantID)
-			if err != nil {
-				errorString := strings.ToLower(err.Error())
-				var displayErr error
-				// Check if this is a forbidden error and use error catalog
-				switch {
-				case strings.Contains(errorString, "forbidden"):
-					displayErr = errors.NewUnauthorizedError("Insufficient permissions to access tenant [evo or tenant-admin].").SnykError
-				case strings.Contains(errorString, "unauthorized"):
-					displayErr = errors.NewUnauthorizedError("Authentication token is invalid or expired. Run `snyk auth` to re-authenticate.").SnykError
-				default:
-					displayErr = err
-				}
-
-				if outErr := ui.OutputError(displayErr); outErr != nil {
-					logger.Error().Err(outErr).Msg("Failed to display error")
-				}
-				logger.Error().Err(err).Msg("Failed to retrieve client id")
-				return nil, fmt.Errorf("failed to retrieve client id: %w", err)
-			}
-		} else {
-			unauthErr := errors.NewUnauthorizedError("Run `snyk auth` or provide valid client id (--client-id=<UUID>)").SnykError
-			if outErr := ui.OutputError(unauthErr); outErr != nil {
-				logger.Error().Err(outErr).Msg("Failed to output unauthorized error")
-			}
-			logger.Error().Err(unauthErr).Msg("Snyk auth or provide valid client id (--client-id=<UUID>)")
+			logger.Error().Err(unauthErr).Msg("Authentication required")
 			return nil, unauthErr
 		}
 	}
 
-	filteredArgs = append([]string{"scan"}, filteredArgs...)
+	// Retrieve client ID if not provided and not using --no-upload
+	if !noUpload && clientID == "" && !hasCommand {
+		var err error
+		if tenantID == "" {
+			if json {
+				return nil, fmt.Errorf("tenant ID is required when using --json flag. Please provide it using --tenant-id")
+			}
+			tenantID, err = helpers.GetTenantID(ctx, tenantID)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get tenant ID: %w", err)
+			}
+		}
+		clientID, err = helpers.GetClientID(ctx, tenantID)
+		if err != nil {
+			errorString := strings.ToLower(err.Error())
+			var displayErr error
+			// Check if this is a forbidden error and use error catalog
+			switch {
+			case strings.Contains(errorString, "forbidden"):
+				displayErr = errors.NewUnauthorizedError("Insufficient permissions to access tenant [evo or tenant-admin].").SnykError
+			case strings.Contains(errorString, "unauthorized"):
+				displayErr = errors.NewUnauthorizedError("Authentication token is invalid or expired. Run `snyk auth` to re-authenticate.").SnykError
+			default:
+				displayErr = err
+			}
+
+			if outErr := ui.OutputError(displayErr); outErr != nil {
+				logger.Error().Err(outErr).Msg("Failed to display error")
+			}
+			logger.Error().Err(err).Msg("Failed to retrieve client id")
+			return nil, fmt.Errorf("failed to retrieve client id: %w", err)
+		}
+	}
+
+	// Prepend 'scan' command if no command is already specified
+	if !hasCommand {
+		filteredArgs = append([]string{"scan"}, filteredArgs...)
+	}
 
 	// Always set analysis URL
 	analysisServerURL := fmt.Sprintf("%s/hidden/mcp-scan/analysis-machine?version=2025-09-02", ctx.GetConfiguration().GetString(configuration.API_URL))
 	filteredArgs = append(filteredArgs, "--analysis-url", analysisServerURL)
 
 	// Only add control server arguments when not using --no-upload
-	if !noUpload {
+	if !hasCommand && !noUpload {
 		controlServerURL := fmt.Sprintf("%s/hidden/mcp-scan/push?version=2025-08-28", ctx.GetConfiguration().GetString(configuration.API_URL))
 		filteredArgs = append(filteredArgs,
 			"--control-server", controlServerURL,
@@ -246,6 +248,7 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 	proxyInfo := wrapperProxy.ProxyInfo()
 	logger.Debug().Int("proxyPort", proxyInfo.Port).Msg("Proxy started successfully")
 
+	logger.Debug().Msg("Instantiating agent-scan binary with command: " + strings.Join(filteredArgs, " "))
 	// Run the embedded binary
 	exitCode, err := runner.ExecuteBinary(ctx, filteredArgs, AgentScanBinaryVersion, checksum, proxyInfo)
 	if err != nil {
