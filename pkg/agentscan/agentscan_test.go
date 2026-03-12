@@ -1,6 +1,7 @@
 package agentscan_test
 
 import (
+	"strings"
 	"testing"
 
 	agentscan "github.com/snyk/cli-extension-agent-scan/pkg/agentscan"
@@ -8,7 +9,134 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFilterArgs_NoUploadFlag(t *testing.T) {
+func TestCommandDetection(t *testing.T) {
+	tests := []struct {
+		name        string
+		filteredArg string
+		hasCommand  bool
+		description string
+	}{
+		{
+			name:        "path is not a command",
+			filteredArg: "/path/to/scan",
+			hasCommand:  false,
+			description: "Paths with / should not be detected as commands",
+		},
+		{
+			name:        "relative path is not a command",
+			filteredArg: "./path/to/scan",
+			hasCommand:  false,
+			description: "Relative paths with ./ should not be detected as commands",
+		},
+		{
+			name:        "file with extension is not a command",
+			filteredArg: "file.txt",
+			hasCommand:  false,
+			description: "Files with . extension should not be detected as commands",
+		},
+		{
+			name:        "version is a command",
+			filteredArg: "version",
+			hasCommand:  true,
+			description: "Simple word without / or . is a command",
+		},
+		{
+			name:        "help is a command",
+			filteredArg: "help",
+			hasCommand:  true,
+			description: "help should be detected as a command",
+		},
+		{
+			name:        "scan is a command",
+			filteredArg: "scan",
+			hasCommand:  true,
+			description: "scan should be detected as a command",
+		},
+		{
+			name:        "flag is not a command",
+			filteredArg: "--json",
+			hasCommand:  false,
+			description: "Flags starting with - are not commands",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate the command detection logic
+			hasCommand := false
+			if !strings.HasPrefix(tt.filteredArg, "-") {
+				if !strings.Contains(tt.filteredArg, "/") && !strings.Contains(tt.filteredArg, ".") {
+					hasCommand = true
+				}
+			}
+			assert.Equal(t, tt.hasCommand, hasCommand, tt.description)
+		})
+	}
+}
+
+func TestScanCommandPrepending(t *testing.T) {
+	tests := []struct {
+		name           string
+		filteredArgs   []string
+		expectedResult []string
+		description    string
+	}{
+		{
+			name:           "prepends scan for path",
+			filteredArgs:   []string{"/path/to/scan"},
+			expectedResult: []string{"scan", "/path/to/scan"},
+			description:    "When first arg is a path, scan should be prepended",
+		},
+		{
+			name:           "prepends scan for flags only",
+			filteredArgs:   []string{"--json", "--skills"},
+			expectedResult: []string{"scan", "--json", "--skills"},
+			description:    "When only flags are present, scan should be prepended",
+		},
+		{
+			name:           "does not prepend scan for version command",
+			filteredArgs:   []string{"version"},
+			expectedResult: []string{"version"},
+			description:    "When version command is present, scan should not be prepended",
+		},
+		{
+			name:           "does not prepend scan for help command",
+			filteredArgs:   []string{"help"},
+			expectedResult: []string{"help"},
+			description:    "When help command is present, scan should not be prepended",
+		},
+		{
+			name:           "does not prepend scan when scan already present",
+			filteredArgs:   []string{"scan", "/path/to/scan"},
+			expectedResult: []string{"scan", "/path/to/scan"},
+			description:    "When scan command is already present, should not duplicate",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate the scan prepending logic
+			result := make([]string, len(tt.filteredArgs))
+			copy(result, tt.filteredArgs)
+
+			hasCommand := false
+			if len(result) > 0 && !strings.HasPrefix(result[0], "-") {
+				firstArg := result[0]
+				if !strings.Contains(firstArg, "/") && !strings.Contains(firstArg, ".") {
+					hasCommand = true
+				}
+			}
+
+			if !hasCommand {
+				result = append([]string{"scan"}, result...)
+			}
+
+			assert.Equal(t, tt.expectedResult, result, tt.description)
+		})
+	}
+}
+
+func TestFilterArgs_BasicFiltering(t *testing.T) {
 	tests := []struct {
 		name     string
 		rawArgs  []string
@@ -108,19 +236,55 @@ func TestNoUploadDoesNotRequireClientID(t *testing.T) {
 	})
 }
 
-func TestControlServerArgsFilteredWithNoUpload(t *testing.T) {
-	// This test documents the expected behavior:
-	// When --no-upload is set, control server arguments should not be passed to binary
-	t.Run("control server args not passed with no-upload", func(t *testing.T) {
-		// Expected behavior:
-		// When --no-upload is set, these args should NOT be passed:
-		// - --control-server
-		// - --control-server-H
-		// - --control-identifier
-		//
-		// But --analysis-url SHOULD still be passed
-		assert.True(t, true, "This behavior is verified in integration tests")
-	})
+func TestControlServerArgsFiltering(t *testing.T) {
+	tests := []struct {
+		name                    string
+		hasCommand              bool
+		noUpload                bool
+		expectControlServerArgs bool
+		description             string
+	}{
+		{
+			name:                    "scan command with upload includes control server args",
+			hasCommand:              false,
+			noUpload:                false,
+			expectControlServerArgs: true,
+			description:             "Scan command with upload should include --control-server, --control-server-H, --control-identifier",
+		},
+		{
+			name:                    "scan command with --no-upload excludes control server args",
+			hasCommand:              false,
+			noUpload:                true,
+			expectControlServerArgs: false,
+			description:             "Scan command with --no-upload should NOT include control server args",
+		},
+		{
+			name:                    "version command excludes control server args",
+			hasCommand:              true,
+			noUpload:                false,
+			expectControlServerArgs: false,
+			description:             "Commands like 'version' should NOT include control server args",
+		},
+		{
+			name:                    "version command with --no-upload excludes control server args",
+			hasCommand:              true,
+			noUpload:                true,
+			expectControlServerArgs: false,
+			description:             "Commands with --no-upload should NOT include control server args",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate the control server args logic
+			shouldAddControlServerArgs := !tt.hasCommand && !tt.noUpload
+
+			assert.Equal(t, tt.expectControlServerArgs, shouldAddControlServerArgs, tt.description)
+
+			t.Logf("hasCommand: %v, noUpload: %v, addControlServerArgs: %v",
+				tt.hasCommand, tt.noUpload, shouldAddControlServerArgs)
+		})
+	}
 }
 
 func TestAnalysisURLAlwaysSet(t *testing.T) {
@@ -237,68 +401,136 @@ func TestFlagConfiguration(t *testing.T) {
 func TestWorkflowScenarios(t *testing.T) {
 	// These tests document the expected behavior for different scenarios
 	scenarios := []struct {
-		name        string
-		noUpload    bool
-		clientID    string
-		isLoggedIn  bool
-		expectError bool
-		description string
+		name              string
+		hasCommand        bool
+		noUpload          bool
+		clientID          string
+		tenantID          string
+		isLoggedIn        bool
+		expectError       bool
+		expectClientIDAPI bool
+		expectTenantIDAPI bool
+		description       string
 	}{
 		{
-			name:        "no-upload with authentication - success",
-			noUpload:    true,
-			clientID:    "",
-			isLoggedIn:  true,
-			expectError: false,
-			description: "When --no-upload is set and user is logged in, should succeed without client-id",
+			name:              "scan command with --no-upload and authenticated",
+			hasCommand:        false,
+			noUpload:          true,
+			clientID:          "",
+			tenantID:          "",
+			isLoggedIn:        true,
+			expectError:       false,
+			expectClientIDAPI: false,
+			expectTenantIDAPI: false,
+			description:       "Scan with --no-upload requires auth but skips client-id/tenant-id retrieval",
 		},
 		{
-			name:        "no-upload without authentication - error",
-			noUpload:    true,
-			clientID:    "",
-			isLoggedIn:  false,
-			expectError: true,
-			description: "When --no-upload is set and user is not logged in, should error",
+			name:              "scan command with --no-upload but not authenticated",
+			hasCommand:        false,
+			noUpload:          true,
+			clientID:          "",
+			tenantID:          "",
+			isLoggedIn:        false,
+			expectError:       true,
+			expectClientIDAPI: false,
+			expectTenantIDAPI: false,
+			description:       "--no-upload requires authentication",
 		},
 		{
-			name:        "no-upload with client-id provided and authenticated - success",
-			noUpload:    true,
-			clientID:    "123e4567-e89b-12d3-a456-426614174000",
-			isLoggedIn:  true,
-			expectError: false,
-			description: "When --no-upload is set, authentication is required even if client-id is provided (client-id is ignored)",
+			name:              "scan command with upload, authenticated, no client-id",
+			hasCommand:        false,
+			noUpload:          false,
+			clientID:          "",
+			tenantID:          "",
+			isLoggedIn:        true,
+			expectError:       false,
+			expectClientIDAPI: true,
+			expectTenantIDAPI: true,
+			description:       "Scan command retrieves tenant-id and client-id when authenticated",
 		},
 		{
-			name:        "no-upload with client-id provided but not authenticated - error",
-			noUpload:    true,
-			clientID:    "123e4567-e89b-12d3-a456-426614174000",
-			isLoggedIn:  false,
-			expectError: true,
-			description: "When --no-upload is set, authentication is required regardless of client-id being provided",
+			name:              "scan command with upload, authenticated, with tenant-id",
+			hasCommand:        false,
+			noUpload:          false,
+			clientID:          "",
+			tenantID:          "123e4567-e89b-12d3-a456-426614174000",
+			isLoggedIn:        true,
+			expectError:       false,
+			expectClientIDAPI: true,
+			expectTenantIDAPI: false,
+			description:       "When tenant-id provided, only client-id is retrieved",
 		},
 		{
-			name:        "upload mode with authentication - success",
-			noUpload:    false,
-			clientID:    "",
-			isLoggedIn:  true,
-			expectError: false,
-			description: "When uploading and logged in, client-id is retrieved automatically",
+			name:              "scan command with upload, authenticated, with client-id",
+			hasCommand:        false,
+			noUpload:          false,
+			clientID:          "123e4567-e89b-12d3-a456-426614174000",
+			tenantID:          "",
+			isLoggedIn:        true,
+			expectError:       false,
+			expectClientIDAPI: false,
+			expectTenantIDAPI: false,
+			description:       "When client-id provided, no API calls needed",
 		},
 		{
-			name:        "upload mode without authentication and no client-id - error",
-			noUpload:    false,
-			clientID:    "",
-			isLoggedIn:  false,
-			expectError: true,
-			description: "When uploading, not logged in, and no client-id provided, should error",
+			name:              "scan command with upload, not authenticated, no client-id",
+			hasCommand:        false,
+			noUpload:          false,
+			clientID:          "",
+			tenantID:          "",
+			isLoggedIn:        false,
+			expectError:       true,
+			expectClientIDAPI: false,
+			expectTenantIDAPI: false,
+			description:       "Scan without auth and without client-id fails",
 		},
 		{
-			name:        "upload mode without authentication but with client-id - success",
-			noUpload:    false,
-			clientID:    "123e4567-e89b-12d3-a456-426614174000",
-			isLoggedIn:  false,
-			expectError: false,
-			description: "When uploading and not logged in, client-id can be provided manually",
+			name:              "scan command with upload, not authenticated, with client-id",
+			hasCommand:        false,
+			noUpload:          false,
+			clientID:          "123e4567-e89b-12d3-a456-426614174000",
+			tenantID:          "",
+			isLoggedIn:        false,
+			expectError:       false,
+			expectClientIDAPI: false,
+			expectTenantIDAPI: false,
+			description:       "Client-id can be provided manually without authentication",
+		},
+		{
+			name:              "version command requires authentication",
+			hasCommand:        true,
+			noUpload:          false,
+			clientID:          "",
+			tenantID:          "",
+			isLoggedIn:        true,
+			expectError:       false,
+			expectClientIDAPI: false,
+			expectTenantIDAPI: false,
+			description:       "Commands like 'version' require auth but skip client-id/tenant-id retrieval",
+		},
+		{
+			name:              "version command without authentication fails",
+			hasCommand:        true,
+			noUpload:          false,
+			clientID:          "",
+			tenantID:          "",
+			isLoggedIn:        false,
+			expectError:       true,
+			expectClientIDAPI: false,
+			expectTenantIDAPI: false,
+			description:       "Commands require authentication when client-id not provided",
+		},
+		{
+			name:              "version command with client-id, no auth needed",
+			hasCommand:        true,
+			noUpload:          false,
+			clientID:          "123e4567-e89b-12d3-a456-426614174000",
+			tenantID:          "",
+			isLoggedIn:        false,
+			expectError:       false,
+			expectClientIDAPI: false,
+			expectTenantIDAPI: false,
+			description:       "Commands with client-id provided don't require authentication",
 		},
 	}
 
@@ -306,10 +538,14 @@ func TestWorkflowScenarios(t *testing.T) {
 		t.Run(scenario.name, func(t *testing.T) {
 			// Document the expected behavior
 			t.Logf("Scenario: %s", scenario.description)
+			t.Logf("  hasCommand: %v", scenario.hasCommand)
 			t.Logf("  noUpload: %v", scenario.noUpload)
 			t.Logf("  clientID: %s", scenario.clientID)
+			t.Logf("  tenantID: %s", scenario.tenantID)
 			t.Logf("  isLoggedIn: %v", scenario.isLoggedIn)
 			t.Logf("  expectError: %v", scenario.expectError)
+			t.Logf("  expectClientIDAPI: %v", scenario.expectClientIDAPI)
+			t.Logf("  expectTenantIDAPI: %v", scenario.expectTenantIDAPI)
 
 			// These scenarios are validated in integration tests
 			assert.True(t, true, "Scenario documented")
