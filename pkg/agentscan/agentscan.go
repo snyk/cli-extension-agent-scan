@@ -96,9 +96,22 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 	// Check if SSL verification should be skipped
 	skipSSLVerify := config.GetBool(configuration.INSECURE_HTTPS)
 
+	// Check if deprecated mcp-scan command is used
+	hasMcpScan := false
+	for _, a := range rawArgs {
+		if a == "mcp-scan" {
+			hasMcpScan = true
+			break
+		}
+	}
+
+	if hasMcpScan {
+		ui.Output("Warning: The 'mcp-scan' command has been renamed to 'agent-scan'. Please update your usage.")
+	}
+
 	filteredArgs := make([]string, 0, len(rawArgs))
 	for _, a := range rawArgs {
-		if a == "agent-scan" || a == "--experimental" || a == "--no-upload" || a == "scan" {
+		if a == "agent-scan" || a == "--experimental" || a == "--no-upload" || a == "scan" || a == "mcp-scan" {
 			continue
 		}
 		if a == "--insecure" {

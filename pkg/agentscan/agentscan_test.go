@@ -210,6 +210,16 @@ func TestFilterArgs_BasicFiltering(t *testing.T) {
 			rawArgs:  []string{"agent-scan", "scan", "--json", "path/to/scan"},
 			expected: []string{"--json", "path/to/scan"},
 		},
+		{
+			name:     "filters out mcp-scan subcommand",
+			rawArgs:  []string{"mcp-scan", "--experimental", "path/to/scan"},
+			expected: []string{"path/to/scan"},
+		},
+		{
+			name:     "filters out mcp-scan with other flags",
+			rawArgs:  []string{"mcp-scan", "--experimental", "--json", "path/to/scan"},
+			expected: []string{"--json", "path/to/scan"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -218,7 +228,7 @@ func TestFilterArgs_BasicFiltering(t *testing.T) {
 			// The actual filtering happens in the Workflow function
 			filtered := make([]string, 0, len(tt.rawArgs))
 			for _, a := range tt.rawArgs {
-				if a == "agent-scan" || a == "--experimental" || a == "--no-upload" || a == "scan" {
+				if a == "agent-scan" || a == "--experimental" || a == "--no-upload" || a == "scan" || a == "mcp-scan" {
 					continue
 				}
 				if a == "--insecure" {
