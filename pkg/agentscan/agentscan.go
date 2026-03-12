@@ -98,7 +98,7 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 
 	filteredArgs := make([]string, 0, len(rawArgs))
 	for _, a := range rawArgs {
-		if a == "agent-scan" || a == "--experimental" || a == "--no-upload" {
+		if a == "agent-scan" || a == "--experimental" || a == "--no-upload" || a == "scan" {
 			continue
 		}
 		if a == "--insecure" {

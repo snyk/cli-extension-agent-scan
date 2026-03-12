@@ -58,6 +58,24 @@ func TestCommandDetection(t *testing.T) {
 			hasCommand:  false,
 			description: "Flags starting with - are not commands",
 		},
+		{
+			name:        "Windows absolute path is not a command",
+			filteredArg: "C:\\Users\\path\\to\\scan",
+			hasCommand:  false,
+			description: "Windows paths with backslashes should not be detected as commands",
+		},
+		{
+			name:        "Windows relative path is not a command",
+			filteredArg: ".\\relative\\path",
+			hasCommand:  false,
+			description: "Windows relative paths with backslashes should not be detected as commands",
+		},
+		{
+			name:        "Windows UNC path is not a command",
+			filteredArg: "\\\\server\\share\\path",
+			hasCommand:  false,
+			description: "Windows UNC paths should not be detected as commands",
+		},
 	}
 
 	for _, tt := range tests {
@@ -65,7 +83,7 @@ func TestCommandDetection(t *testing.T) {
 			// Simulate the command detection logic
 			hasCommand := false
 			if !strings.HasPrefix(tt.filteredArg, "-") {
-				if !strings.Contains(tt.filteredArg, "/") && !strings.Contains(tt.filteredArg, ".") {
+				if !strings.Contains(tt.filteredArg, "/") && !strings.Contains(tt.filteredArg, "\\") && !strings.Contains(tt.filteredArg, ".") {
 					hasCommand = true
 				}
 			}
@@ -122,7 +140,7 @@ func TestScanCommandPrepending(t *testing.T) {
 			hasCommand := false
 			if len(result) > 0 && !strings.HasPrefix(result[0], "-") {
 				firstArg := result[0]
-				if !strings.Contains(firstArg, "/") && !strings.Contains(firstArg, ".") {
+				if !strings.Contains(firstArg, "/") && !strings.Contains(firstArg, "\\") && !strings.Contains(firstArg, ".") {
 					hasCommand = true
 				}
 			}
@@ -182,6 +200,16 @@ func TestFilterArgs_BasicFiltering(t *testing.T) {
 			rawArgs:  []string{"agent-scan", "--experimental", "--insecure", "path/to/scan"},
 			expected: []string{"path/to/scan"},
 		},
+		{
+			name:     "filters out scan subcommand",
+			rawArgs:  []string{"agent-scan", "--experimental", "scan", "path/to/scan"},
+			expected: []string{"path/to/scan"},
+		},
+		{
+			name:     "filters out scan with other flags",
+			rawArgs:  []string{"agent-scan", "scan", "--json", "path/to/scan"},
+			expected: []string{"--json", "path/to/scan"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -190,7 +218,7 @@ func TestFilterArgs_BasicFiltering(t *testing.T) {
 			// The actual filtering happens in the Workflow function
 			filtered := make([]string, 0, len(tt.rawArgs))
 			for _, a := range tt.rawArgs {
-				if a == "agent-scan" || a == "--experimental" || a == "--no-upload" {
+				if a == "agent-scan" || a == "--experimental" || a == "--no-upload" || a == "scan" {
 					continue
 				}
 				if a == "--insecure" {
