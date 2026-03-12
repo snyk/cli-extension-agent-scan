@@ -135,7 +135,7 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 		// Common commands: scan, help, version, etc.
 		// If it doesn't look like a path (no / or .), assume it's a command
 		firstArg := filteredArgs[0]
-		if !strings.Contains(firstArg, "/") && !strings.Contains(firstArg, ".") {
+		if !strings.Contains(firstArg, "/") && !strings.Contains(firstArg, "\\") && !strings.Contains(firstArg, ".") {
 			hasCommand = true
 		}
 	}
