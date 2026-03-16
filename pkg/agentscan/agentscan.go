@@ -58,6 +58,7 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 	noUpload := config.GetBool(FlagNoUpload)
 
 	isHelp := false
+	isDebug := false
 	// As this is an experimental feature, we only want to continue if the experimental flag is set
 	if !experimental {
 		logger.Debug().Msg("Required experimental flag is not present")
@@ -116,6 +117,10 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 		}
 		if a == "--insecure" {
 			skipSSLVerify = true
+			continue
+		}
+		if a == "--debug" || a == "-d" {
+			isDebug = true
 			continue
 		}
 		if a == "help" {
@@ -231,6 +236,11 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 	// Add --skip-ssl-verify if insecure mode is enabled
 	if skipSSLVerify {
 		filteredArgs = append(filteredArgs, "--skip-ssl-verify")
+	}
+
+	// Add --verbose if debug mode is enabled
+	if isDebug {
+		filteredArgs = append(filteredArgs, "--verbose")
 	}
 
 	// Initialize proxy for credential injection

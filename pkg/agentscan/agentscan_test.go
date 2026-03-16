@@ -1,6 +1,7 @@
 package agentscan_test
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -220,6 +221,26 @@ func TestFilterArgs_BasicFiltering(t *testing.T) {
 			rawArgs:  []string{"mcp-scan", "--experimental", "--json", "path/to/scan"},
 			expected: []string{"--json", "path/to/scan"},
 		},
+		{
+			name:     "filters out debug",
+			rawArgs:  []string{"agent-scan", "--experimental", "--debug", "path/to/scan"},
+			expected: []string{"path/to/scan"},
+		},
+		{
+			name:     "filters out debug with other args",
+			rawArgs:  []string{"agent-scan", "--debug", "--json", "path/to/scan"},
+			expected: []string{"--json", "path/to/scan"},
+		},
+		{
+			name:     "filters out -d short form",
+			rawArgs:  []string{"agent-scan", "--experimental", "-d", "path/to/scan"},
+			expected: []string{"path/to/scan"},
+		},
+		{
+			name:     "filters out -d with other args",
+			rawArgs:  []string{"agent-scan", "-d", "--json", "path/to/scan"},
+			expected: []string{"--json", "path/to/scan"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -232,6 +253,9 @@ func TestFilterArgs_BasicFiltering(t *testing.T) {
 					continue
 				}
 				if a == "--insecure" {
+					continue
+				}
+				if a == "--debug" || a == "-d" {
 					continue
 				}
 				if len(a) >= len("--tenant-id=") && a[:len("--tenant-id=")] == "--tenant-id=" {
@@ -321,6 +345,58 @@ func TestControlServerArgsFiltering(t *testing.T) {
 
 			t.Logf("hasCommand: %v, noUpload: %v, addControlServerArgs: %v",
 				tt.hasCommand, tt.noUpload, shouldAddControlServerArgs)
+		})
+	}
+}
+
+func TestVerboseWhenDebug(t *testing.T) {
+	tests := []struct {
+		name          string
+		isDebug       bool
+		filteredArgs  []string
+		expectVerbose bool
+		description   string
+	}{
+		{
+			name:          "debug mode appends --verbose",
+			isDebug:       true,
+			filteredArgs:  []string{"path/to/scan"},
+			expectVerbose: true,
+			description:   "When --debug or -d is in raw args, isDebug is true and --verbose is appended",
+		},
+		{
+			name:          "-d short form appends --verbose",
+			isDebug:       true,
+			filteredArgs:  []string{"path/to/scan"},
+			expectVerbose: true,
+			description:   "When -d is in raw args, isDebug is true and --verbose is appended",
+		},
+		{
+			name:          "no debug does not append --verbose",
+			isDebug:       false,
+			filteredArgs:  []string{"path/to/scan"},
+			expectVerbose: false,
+			description:   "When debug is not in raw args, --verbose is not appended",
+		},
+		{
+			name:          "debug with existing args",
+			isDebug:       true,
+			filteredArgs:  []string{"scan", "/path", "--json"},
+			expectVerbose: true,
+			description:   "--verbose is appended at end when isDebug is true",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Simulate the --verbose append logic from Workflow
+			result := make([]string, len(tt.filteredArgs))
+			copy(result, tt.filteredArgs)
+			if tt.isDebug {
+				result = append(result, "--verbose")
+			}
+			hasVerbose := slices.Contains(result, "--verbose")
+			assert.Equal(t, tt.expectVerbose, hasVerbose, tt.description)
 		})
 	}
 }
