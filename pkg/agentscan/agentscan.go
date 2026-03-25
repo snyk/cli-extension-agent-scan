@@ -56,9 +56,9 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 	experimental := config.GetBool(FlagExperimental)
 	json := config.GetBool(FlagJSON)
 	noUpload := config.GetBool(FlagNoUpload)
+	isDebug := config.GetBool(configuration.DEBUG)
 
 	isHelp := false
-	isDebug := false
 	// As this is an experimental feature, we only want to continue if the experimental flag is set
 	if !experimental {
 		logger.Debug().Msg("Required experimental flag is not present")
@@ -120,7 +120,6 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 			continue
 		}
 		if a == "--debug" || a == "-d" {
-			isDebug = true
 			continue
 		}
 		if a == "help" {
