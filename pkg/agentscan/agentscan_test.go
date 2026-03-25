@@ -221,6 +221,8 @@ func TestFilterArgs_BasicFiltering(t *testing.T) {
 			rawArgs:  []string{"mcp-scan", "--experimental", "--json", "path/to/scan"},
 			expected: []string{"--json", "path/to/scan"},
 		},
+		// --debug and -d are filtered so they are not forwarded to the child binary;
+		// isDebug is read from config.GetBool(configuration.DEBUG) in the workflow.
 		{
 			name:     "filters out debug",
 			rawArgs:  []string{"agent-scan", "--experimental", "--debug", "path/to/scan"},
@@ -350,6 +352,8 @@ func TestControlServerArgsFiltering(t *testing.T) {
 }
 
 func TestVerboseWhenDebug(t *testing.T) {
+	// isDebug is set from config.GetBool(configuration.DEBUG); the framework sets this
+	// when the user passes --debug or -d (global flag).
 	tests := []struct {
 		name          string
 		isDebug       bool
@@ -362,28 +366,28 @@ func TestVerboseWhenDebug(t *testing.T) {
 			isDebug:       true,
 			filteredArgs:  []string{"path/to/scan"},
 			expectVerbose: true,
-			description:   "When --debug or -d is in raw args, isDebug is true and --verbose is appended",
+			description:   "When config.GetBool(configuration.DEBUG) is true (e.g. --debug or -d), --verbose is appended",
 		},
 		{
 			name:          "-d short form appends --verbose",
 			isDebug:       true,
 			filteredArgs:  []string{"path/to/scan"},
 			expectVerbose: true,
-			description:   "When -d is in raw args, isDebug is true and --verbose is appended",
+			description:   "When debug is enabled via config (--debug or -d), --verbose is appended",
 		},
 		{
 			name:          "no debug does not append --verbose",
 			isDebug:       false,
 			filteredArgs:  []string{"path/to/scan"},
 			expectVerbose: false,
-			description:   "When debug is not in raw args, --verbose is not appended",
+			description:   "When config.GetBool(configuration.DEBUG) is false, --verbose is not appended",
 		},
 		{
 			name:          "debug with existing args",
 			isDebug:       true,
 			filteredArgs:  []string{"scan", "/path", "--json"},
 			expectVerbose: true,
-			description:   "--verbose is appended at end when isDebug is true",
+			description:   "--verbose is appended at end when isDebug (from config) is true",
 		},
 	}
 
@@ -690,5 +694,10 @@ func TestConfigurationKeys(t *testing.T) {
 		// Verify that configuration keys match expected values
 		assert.Equal(t, configuration.RAW_CMD_ARGS, configuration.RAW_CMD_ARGS)
 		assert.Equal(t, configuration.API_URL, configuration.API_URL)
+	})
+	t.Run("debug flag uses framework configuration key", func(t *testing.T) {
+		// Workflow sets isDebug from config.GetBool(configuration.DEBUG); the framework
+		// binds --debug and -d to this key via global flags.
+		assert.Equal(t, "debug", configuration.DEBUG)
 	})
 }
