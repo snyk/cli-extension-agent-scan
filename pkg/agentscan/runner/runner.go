@@ -54,8 +54,17 @@ func platformAssetMatcher() (prefix, suffix string, err error) {
 		switch runtime.GOARCH {
 		case "arm64":
 			return "agent-scan-", "-macos-arm64", nil
+		case "amd64":
+			return "agent-scan-", "-macos-x86_64", nil
 		default:
 			return "", "", fmt.Errorf("unsupported darwin architecture: %s", runtime.GOARCH)
+		}
+	case "windows":
+		switch runtime.GOARCH {
+		case "amd64":
+			return "agent-scan-", "-windows-x86_64.exe", nil
+		default:
+			return "", "", fmt.Errorf("unsupported windows architecture: %s", runtime.GOARCH)
 		}
 	default:
 		return "", "", fmt.Errorf("unsupported platform: %s/%s", runtime.GOOS, runtime.GOARCH)
@@ -309,7 +318,12 @@ func ExecuteBinary(ctx workflow.InvocationContext, args []string, version, check
 
 	// 1. Create a temporary file
 	// The "*" is a placeholder for a random string to ensure uniqueness
-	tmpFile, err := os.CreateTemp("", "agent-scan-*")
+	// On Windows, executables must have .exe extension
+	tmpPattern := "agent-scan-*"
+	if runtime.GOOS == "windows" {
+		tmpPattern = "agent-scan-*.exe"
+	}
+	tmpFile, err := os.CreateTemp("", tmpPattern)
 	if err != nil {
 		return -1, fmt.Errorf("failed to create temp file: %w", err)
 	}
