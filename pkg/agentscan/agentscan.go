@@ -2,7 +2,7 @@ package agentscan
 
 import (
 	"fmt"
-	"os/exec"
+	"os"
 	"runtime"
 	"strings"
 
@@ -40,6 +40,19 @@ func checksumForCurrentPlatform() (string, error) {
 				return "", fmt.Errorf("checksum not configured for darwin/arm64 platform")
 			}
 			return AgentScanBinaryChecksumMacOSArm64, nil
+		}
+		if runtime.GOARCH == "amd64" {
+			if AgentScanBinaryChecksumMacOSIntel == "" {
+				return "", fmt.Errorf("checksum not configured for darwin/amd64 platform")
+			}
+			return AgentScanBinaryChecksumMacOSIntel, nil
+		}
+	case "windows":
+		if runtime.GOARCH == "amd64" {
+			if AgentScanBinaryChecksumWindowsAmd64 == "" {
+				return "", fmt.Errorf("checksum not configured for windows/amd64 platform")
+			}
+			return AgentScanBinaryChecksumWindowsAmd64, nil
 		}
 	}
 
@@ -223,12 +236,12 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 			"--control-server", controlServerURL,
 			"--control-server-H", "x-client-id: "+clientID,
 		)
-		unameOut, err := exec.Command("uname", "-n").Output()
+		hostname, err := os.Hostname()
 		if err != nil {
-			logger.Error().Err(err).Msg("Failed to get uname")
-			return nil, fmt.Errorf("failed to get uname: %w", err)
+			logger.Error().Err(err).Msg("Failed to get hostname")
+			return nil, fmt.Errorf("failed to get hostname: %w", err)
 		}
-		controlIdentifier := strings.TrimSpace(string(unameOut))
+		controlIdentifier := strings.TrimSpace(hostname)
 		filteredArgs = append(filteredArgs, "--control-identifier", controlIdentifier)
 	}
 

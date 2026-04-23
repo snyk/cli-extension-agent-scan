@@ -54,8 +54,17 @@ func platformAssetMatcher() (prefix, suffix string, err error) {
 		switch runtime.GOARCH {
 		case "arm64":
 			return "agent-scan-", "-macos-arm64", nil
+		case "amd64":
+			return "agent-scan-", "-macos-x86_64", nil
 		default:
 			return "", "", fmt.Errorf("unsupported darwin architecture: %s", runtime.GOARCH)
+		}
+	case "windows":
+		switch runtime.GOARCH {
+		case "amd64":
+			return "agent-scan-", "-windows-x86_64.exe", nil
+		default:
+			return "", "", fmt.Errorf("unsupported windows architecture: %s", runtime.GOARCH)
 		}
 	default:
 		return "", "", fmt.Errorf("unsupported platform: %s/%s", runtime.GOOS, runtime.GOARCH)
