@@ -1,6 +1,8 @@
 package agentscan_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"slices"
 	"strings"
 	"testing"
@@ -500,6 +502,25 @@ func TestTenantIDValidation(t *testing.T) {
 			} else {
 				assert.True(t, isValid, "Expected valid UUID")
 			}
+		})
+	}
+}
+
+func TestBinaryChecksumsAreValidSHA256(t *testing.T) {
+	checksums := map[string]string{
+		"linux/amd64":   agentscan.AgentScanBinaryChecksumLinuxAmd64,
+		"linux/arm64":   agentscan.AgentScanBinaryChecksumLinuxArm64,
+		"darwin/arm64":  agentscan.AgentScanBinaryChecksumMacOSArm64,
+		"darwin/amd64":  agentscan.AgentScanBinaryChecksumMacOSIntel,
+		"windows/amd64": agentscan.AgentScanBinaryChecksumWindowsAmd64,
+	}
+
+	for platform, checksum := range checksums {
+		t.Run(platform, func(t *testing.T) {
+			assert.NotEmpty(t, checksum, "checksum must be configured for %s", platform)
+			decoded, err := hex.DecodeString(checksum)
+			assert.NoError(t, err, "checksum for %s must be valid hex", platform)
+			assert.Len(t, decoded, sha256.Size, "checksum for %s must be a 32-byte SHA-256 digest", platform)
 		})
 	}
 }
