@@ -21,6 +21,11 @@ import (
 	"github.com/snyk/go-application-framework/pkg/workflow"
 )
 
+// localBinaryPathEnvVar, when set, makes the runner use a locally provided
+// agent-scan binary instead of downloading and checksum-verifying a release.
+// For local development only.
+const localBinaryPathEnvVar = "SNYK_AGENT_SCAN_BINARY_PATH"
+
 type githubAsset struct {
 	Name               string `json:"name"`
 	BrowserDownloadURL string `json:"browser_download_url"`
@@ -114,6 +119,25 @@ func verifyFileChecksum(path, expected string) (bool, error) {
 //nolint:gocyclo // The control flow is a bit involved but kept together for clarity.
 func getOrDownloadBinary(ctx workflow.InvocationContext, version, checksum string) (string, error) {
 	logger := ctx.GetEnhancedLogger()
+
+	// Developer override: point directly at a locally built agent-scan binary
+	// (e.g. `make binary` in the agent-scan repo -> ./dist/agent-scan). This bypasses
+	// the GitHub download, cache, and checksum verification, so it is intended for
+	// local development only and must never be relied on in production.
+	if localPath := strings.TrimSpace(os.Getenv(localBinaryPathEnvVar)); localPath != "" {
+		info, statErr := os.Stat(localPath)
+		if statErr != nil {
+			return "", fmt.Errorf("%s is set but the binary at %q is unusable: %w", localBinaryPathEnvVar, localPath, statErr)
+		}
+		if !info.Mode().IsRegular() {
+			return "", fmt.Errorf("%s at %q is not a regular file", localBinaryPathEnvVar, localPath)
+		}
+		logger.Warn().
+			Str("path", localPath).
+			Msg("Using local agent-scan binary override (" + localBinaryPathEnvVar + "); skipping download and checksum verification")
+		return localPath, nil
+	}
+
 	asset, err := fetchAssetForVersionAndPlatform(ctx, version)
 	if err != nil {
 		return "", err
