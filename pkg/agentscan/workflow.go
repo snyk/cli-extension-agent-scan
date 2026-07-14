@@ -9,12 +9,13 @@ import (
 const (
 	ScanWorkflowIDStr = "agent-scan"
 
-	AgentScanBinaryVersion = "0.5.1"
+	AgentScanBinaryVersion = "0.5.13"
 
-	AgentScanBinaryChecksumLinuxAmd64   = "99153ef8390ba4486e2785f5bc18f2ce15924c6104ec2c7571ccb969ce8d3a2d"
-	AgentScanBinaryChecksumMacOSArm64   = "5980072646792e1de5a1621ba4556e0cd28fc9f1614d05875958e4b1d814434e"
-	AgentScanBinaryChecksumMacOSIntel   = "3a82ab38cddbd1c8698322f9dbff8dd6531aa5e7ae0fbd7a088af13206dc693f"
-	AgentScanBinaryChecksumWindowsAmd64 = "d6f65c662939035c76743c3a376c3b43dd5522226d95cf6216d4a46e682f58e1"
+	AgentScanBinaryChecksumLinuxAmd64   = "8e605ee8426edd2acced0adb8305b38cfc3ff3f07204d80a370d6a77f21b20bd"
+	AgentScanBinaryChecksumLinuxArm64   = "9aac9cd948c798a03445e7490b193c2e504021bd6d7edc42178afc2a3b282d3b"
+	AgentScanBinaryChecksumMacOSArm64   = "7907e46c89c399c0d91e09707e637733591e2b2f4cec1c2130874ccf147d6745"
+	AgentScanBinaryChecksumMacOSIntel   = "1ca8b7e42b17feb2de6f1584ee62b694e64b57f28f588bc094c54ed6081c7a14"
+	AgentScanBinaryChecksumWindowsAmd64 = "4bc78ba892767628cfa4e1b52b0a8de94caa0484f424ff1b6f34d20cca55fc6d"
 )
 
 var (

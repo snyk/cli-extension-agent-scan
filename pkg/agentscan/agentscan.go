@@ -34,6 +34,12 @@ func checksumForCurrentPlatform() (string, error) {
 			}
 			return AgentScanBinaryChecksumLinuxAmd64, nil
 		}
+		if runtime.GOARCH == "arm64" {
+			if AgentScanBinaryChecksumLinuxArm64 == "" {
+				return "", fmt.Errorf("checksum not configured for linux/arm64 platform")
+			}
+			return AgentScanBinaryChecksumLinuxArm64, nil
+		}
 	case "darwin":
 		if runtime.GOARCH == "arm64" {
 			if AgentScanBinaryChecksumMacOSArm64 == "" {

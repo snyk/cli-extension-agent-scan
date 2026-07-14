@@ -47,6 +47,8 @@ func platformAssetMatcher() (prefix, suffix string, err error) {
 		switch runtime.GOARCH {
 		case "amd64":
 			return "agent-scan-", "-linux-x86_64", nil
+		case "arm64":
+			return "agent-scan-", "-linux-arm64", nil
 		default:
 			return "", "", fmt.Errorf("unsupported linux architecture: %s", runtime.GOARCH)
 		}
