@@ -1,15 +1,21 @@
 package agentscan_test
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"io"
+	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	agentscan "github.com/snyk/cli-extension-agent-scan/pkg/agentscan"
 	"github.com/snyk/go-application-framework/pkg/configuration"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCommandDetection(t *testing.T) {
@@ -522,6 +528,58 @@ func TestBinaryChecksumsAreValidSHA256(t *testing.T) {
 			assert.NoError(t, err, "checksum for %s must be valid hex", platform)
 			assert.Len(t, decoded, sha256.Size, "checksum for %s must be a 32-byte SHA-256 digest", platform)
 		})
+	}
+}
+
+func TestBinaryChecksumsMatchGitHubReleases(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network-dependent checksum verification in short mode")
+	}
+
+	version := agentscan.AgentScanBinaryVersion
+	tag := "v" + version
+
+	// suffix mirrors runner.platformAssetMatcher for each GOOS/GOARCH; the
+	// resulting asset name is the key used in checksums.txt.
+	expected := map[string]string{
+		"agent-scan-" + version + "-linux-x86_64":       agentscan.AgentScanBinaryChecksumLinuxAmd64,
+		"agent-scan-" + version + "-linux-arm64":        agentscan.AgentScanBinaryChecksumLinuxArm64,
+		"agent-scan-" + version + "-macos-arm64":        agentscan.AgentScanBinaryChecksumMacOSArm64,
+		"agent-scan-" + version + "-macos-x86_64":       agentscan.AgentScanBinaryChecksumMacOSIntel,
+		"agent-scan-" + version + "-windows-x86_64.exe": agentscan.AgentScanBinaryChecksumWindowsAmd64,
+	}
+
+	checksumsURL := "https://github.com/snyk/agent-scan/releases/download/" +
+		url.PathEscape(tag) + "/checksums.txt"
+
+	client := &http.Client{Timeout: 1 * time.Minute}
+	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, checksumsURL, http.NoBody)
+	require.NoError(t, err, "failed to build request for %s", checksumsURL)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err, "failed to download %s", checksumsURL)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusOK, resp.StatusCode, "unexpected status downloading %s", checksumsURL)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err, "failed to read %s", checksumsURL)
+
+	// Parse the "<sha256>  <asset-name>" lines into a lookup by asset name.
+	published := make(map[string]string)
+	for _, line := range strings.Split(string(body), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 2 {
+			continue
+		}
+		published[fields[1]] = strings.ToLower(fields[0])
+	}
+	require.NotEmpty(t, published, "checksums.txt contained no parseable entries")
+
+	for assetName, want := range expected {
+		got, ok := published[assetName]
+		assert.True(t, ok, "%s not found in checksums.txt", assetName)
+		assert.Equal(t, strings.ToLower(want), got,
+			"checksum mismatch for %s: constant does not match checksums.txt", assetName)
 	}
 }
 
