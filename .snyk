@@ -1,14 +1,3 @@
 # Snyk (https://snyk.io) policy file
 version: v1.25.0
-ignore:
-  SNYK-GOLANG-STDOS-17905377:
-    - '*':
-        reason: >-
-          std/os symlink attack is only fixed in Go 1.25.12 / 1.26.5. This module
-          is aligned to the Snyk CLI (cliv2) build toolchain, which is pinned to
-          go 1.26.4. The go directive here does not determine the std library in
-          the shipped binary (the CLI build toolchain does), so this can only be
-          truly remediated when cliv2 bumps to go 1.26.5. Time-boxed until that
-          upgrade lands.
-        expires: 2026-08-13T00:00:00.000Z
-        created: 2026-07-14T00:00:00.000Z
+ignore: {}
