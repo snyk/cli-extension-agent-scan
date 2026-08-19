@@ -232,14 +232,14 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 	}
 
 	// Always set analysis URL
-	analysisServerURL := fmt.Sprintf("%s/hidden/mcp-scan/analysis-machine?version=2025-09-02", ctx.GetConfiguration().GetString(configuration.API_URL))
-	filteredArgs = append(filteredArgs, "--analysis-url", analysisServerURL)
+	analysisURL := analysisServerURL(ctx.GetConfiguration().GetString(configuration.API_URL))
+	filteredArgs = append(filteredArgs, "--analysis-url", analysisURL)
 
 	// Only add control server arguments when not using --no-upload
 	if !hasCommand && !noUpload {
-		controlServerURL := fmt.Sprintf("%s/hidden/mcp-scan/push?version=2025-08-28", ctx.GetConfiguration().GetString(configuration.API_URL))
+		controlURL := controlServerURL(ctx.GetConfiguration().GetString(configuration.API_URL))
 		filteredArgs = append(filteredArgs,
-			"--control-server", controlServerURL,
+			"--control-server", controlURL,
 			"--control-server-H", "x-client-id: "+clientID,
 		)
 		hostname, err := os.Hostname()
