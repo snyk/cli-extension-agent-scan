@@ -79,6 +79,45 @@ platform-specific, e.g. `cliv2/bin/snyk_darwin_arm64`).
 <Some-path>/cli/binary-releases/snyk-macos-arm64 agent-scan --experimental
 ```
 
+### Useful options
+
+If the Snyk CLI is already authenticated, you do not need to provide a push key.
+The extension will find your tenant (or ask you to choose one) and request a push
+key automatically.
+
+You can also provide the push key yourself using `--client-id`. The name is kept
+for compatibility; in this context, the client ID is the Agent Scan push key:
+
+```bash
+<Some-path>/cli/binary-releases/snyk-macos-arm64 agent-scan \
+  --experimental \
+  --client-id=<push-key>
+```
+
+Starting with Agent Scan 0.5.17, the analysis backend can process scans
+asynchronously. That is useful when you only need to submit the scan, but it means
+the command might finish before the analysis results are available. Add
+`--show-analysis-results` when you want to wait for analysis and see the results in
+the terminal:
+
+```bash
+<Some-path>/cli/binary-releases/snyk-macos-arm64 agent-scan \
+  --experimental \
+  --show-analysis-results
+```
+
+When using `--json` without supplying `--client-id`, also provide `--tenant-id`.
+JSON mode cannot show the interactive tenant picker that is used when several
+tenants are available:
+
+```bash
+<Some-path>/cli/binary-releases/snyk-macos-arm64 agent-scan \
+  --experimental \
+  --tenant-id=<tenant-id> \
+  --show-analysis-results \
+  --json
+```
+
 To return to the normal download-and-verify behavior, `unset SNYK_AGENT_SCAN_BINARY_PATH`.
 
 
