@@ -235,20 +235,18 @@ func Workflow(ctx workflow.InvocationContext, _ []workflow.Data) ([]workflow.Dat
 	analysisURL := analysisServerURL(ctx.GetConfiguration().GetString(configuration.API_URL))
 	filteredArgs = append(filteredArgs, "--analysis-url", analysisURL)
 
-	// Only add control server arguments when not using --no-upload
+	// Only add upload arguments when not using --no-upload
 	if !hasCommand && !noUpload {
-		controlURL := controlServerURL(ctx.GetConfiguration().GetString(configuration.API_URL))
-		filteredArgs = append(filteredArgs,
-			"--control-server", controlURL,
-			"--control-server-H", "x-client-id: "+clientID,
-		)
 		hostname, err := os.Hostname()
 		if err != nil {
 			logger.Error().Err(err).Msg("Failed to get hostname")
 			return nil, fmt.Errorf("failed to get hostname: %w", err)
 		}
-		controlIdentifier := strings.TrimSpace(hostname)
-		filteredArgs = append(filteredArgs, "--control-identifier", controlIdentifier)
+		machineID := strings.TrimSpace(hostname)
+		filteredArgs = append(filteredArgs,
+			"--push-key", clientID,
+			"--machine-id", machineID,
+		)
 	}
 
 	// Add --skip-ssl-verify if insecure mode is enabled

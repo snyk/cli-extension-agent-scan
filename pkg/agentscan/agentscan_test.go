@@ -317,11 +317,11 @@ func TestControlServerArgsFiltering(t *testing.T) {
 		description             string
 	}{
 		{
-			name:                    "scan command with upload includes control server args",
+			name:                    "scan command with upload includes upload args",
 			hasCommand:              false,
 			noUpload:                false,
 			expectControlServerArgs: true,
-			description:             "Scan command with upload should include --control-server, --control-server-H, --control-identifier",
+			description:             "Scan command with upload should include --push-key and --machine-id",
 		},
 		{
 			name:                    "scan command with --no-upload excludes control server args",
