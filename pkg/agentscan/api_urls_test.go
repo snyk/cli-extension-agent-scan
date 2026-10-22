@@ -28,10 +28,3 @@ func TestAnalysisServerURL(t *testing.T) {
 		})
 	}
 }
-
-func TestControlServerURLKeepsExistingAPIVersion(t *testing.T) {
-	expected := "https://api.snyk.io/hidden/mcp-scan/push?version=2025-08-28"
-	if actual := controlServerURL("https://api.snyk.io"); actual != expected {
-		t.Fatalf("controlServerURL() = %q, want %q", actual, expected)
-	}
-}

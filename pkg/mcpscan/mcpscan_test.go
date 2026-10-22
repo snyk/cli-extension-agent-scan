@@ -106,9 +106,8 @@ func TestControlServerArgsFilteredWithNoUpload(t *testing.T) {
 	t.Run("control server args not passed with no-upload", func(t *testing.T) {
 		// Expected behavior:
 		// When --no-upload is set, these args should NOT be passed:
-		// - --control-server
-		// - --control-server-H
-		// - --control-identifier
+		// - --push-key
+		// - --machine-id
 		//
 		// But --analysis-url SHOULD still be passed
 		assert.True(t, true, "This behavior is verified in integration tests")
