@@ -3,7 +3,7 @@ module github.com/snyk/cli-extension-agent-scan
 go 1.26.10
 
 require (
-	github.com/elazarl/goproxy v1.9.2
+	github.com/elazarl/goproxy v1.7.2
 	github.com/elazarl/goproxy/ext v0.0.0-20230808193330-2592e75ae04a
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
